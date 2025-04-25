@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PLC İzleme Paneli</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 1rem;
+        background: #f8f9fa;
+        color: #333;
+      }
+      h1,
+      h2 {
+        text-align: center;
+      }
+      .data-box {
+        background: white;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+      ul {
+        list-style: none;
+        padding-left: 0;
+      }
+      li {
+        padding: 0.3rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📊 PLC İzleme Paneli</h1>
+
+    <div class="data-box">
+      <h2>🔄 Anlık Veri</h2>
+      <p id="currentData">Yükleniyor...</p>
+    </div>
+
+    <div class="data-box">
+      <h2>🕒 Son 10 Log</h2>
+      <ul id="logData"></ul>
+      <button onclick="fetchLogs(true)">🔽 Daha Fazla Yükle</button>
+    </div>
+
+    <script>
+      let lastTimestamp = null;
+
+      const databaseURL =
+        "https://modbus-veri-projesi-default-rtdb.europe-west1.firebasedatabase.app/";
+
+      async function fetchRealtimeData() {
+        const res = await fetch(`${databaseURL}/modbusData.json`);
+        const data = await res.json();
+        document.getElementById("currentData").innerText = data
+          ? data.join(" - ")
+          : "Veri bulunamadı.";
+      }
+
+      async function fetchLogs() {
+        const res = await fetch(`${databaseURL}/modbusLogs.json`);
+        const logs = await res.json();
+        const logList = document.getElementById("logData");
+        logList.innerHTML = "";
+
+        if (!logs) {
+          logList.innerHTML = "<li>Log verisi bulunamadı.</li>";
+          return;
+        }
+
+        const logEntries = Object.entries(logs)
+          .sort((a, b) => new Date(b[1].timestamp) - new Date(a[1].timestamp))
+          .slice(0, 10);
+
+        logEntries.forEach(([key, entry]) => {
+          const li = document.createElement("li");
+
+          const date = new Date(entry.timestamp);
+          const formatted = date.toLocaleString("tr-TR", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          li.innerText = `${formatted}: ${entry.veri.join(" - ")}`;
+          logList.appendChild(li);
+        });
+      }
+
+      async function updateUI() {
+        await fetchRealtimeData();
+        await fetchLogs();
+      }
+
+      updateUI();
+      setInterval(updateUI, 10_000); // 10 saniyede bir güncelle
+    </script>
+  </body>
+</html>
